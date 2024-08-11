@@ -1,0 +1,666 @@
+---
+title: "MGT7179ReportTemV01"
+author1:
+- Name, Family Name; Faderemi Atoyebi
+author2:
+- Student ID; 40379140
+output: 
+  bookdown::pdf_document2:
+    template: MGT7179LatexTempV02.tex
+    keep_tex: true
+  xaringan::ninjutsu:
+    css: [default, chocolate, metropolis-fonts]
+date: "2023-03-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# https://ulriklyngs.com/post/2021/12/02/how-to-adapt-any-latex-template-for-use-with-r-markdown-in-four-steps/
+```
+#1.1 Introduction 
+The medical world is evolving on daily basis and with the world going digital, there have been a lot of introduction of new technologies. These are used to develop some results, used in clinics for clinical testing, generating laboratory results and lots more. The study will help promote policy making and decision making among medical personnel.
+
+#2.1 Data Understanding 
+The data set contained 105863 observations and 15 variables. The data was made available from an evaluation study in the US of healthcare employees with technology tendencies, it includes data from following five states in the Unites States – Colorado, Florida, Kentucky, Orlando and South Carolina. The insights gained from the analysis will be used for policy and decision making on tendency of healthcare workers and how they are likely to embrace new technologies. 
+
+#2.2 Preparation of Data 
+The absence of errors in data sets, especially large ones, are almost unimaginable. Data cleaning, reduction, modification are essential exercises to ensure optimal results in data analysis (Garcia et al.,2015). Data quality issues such as missing values, outliers, zeros, duplication and some negative values were identified in the data. 
+
+It was discovered that there are lots of missing values and zeros in the data set. in below function the missing value and zero observations will be removed. Final primary specialty, final grad year, rank and accuracy contain missing values and zero values. After removing these the remaining observation is 30732 observations which is about 29% of the initial data set. 
+
+While cleaning the data some outliers were also discovered, in final grad year there is a possibility that the figures were wrongly entered into the dataset and so all final grad year below 1955 will be dropped 
+
+#2.3 Modelling and Evaluation. 
+A total of 16160 observations remained after cleaning of the data. A summary of the remaining data shows that Florida has the largest data set of all the five states, based on this the observation will be split into two sets for analysis purposes. The first data set will contain all observations from Florida and the remaining data set will have observations from the four states. 
+
+The first data set with Florida data will be further subsetted using the top six specialties in the state dataset. This is because there are 80 different final primary specialties. After subsetting, the observations remaining were 3880. Three models Logistic regression, K-Means and Naïve Bayes are run on these observations and the results compared to get the best possible results. 
+```{r 1000, echo=FALSE}
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org"
+       options(repos=r)})
+```
+
+```{r 100, echo=FALSE}
+setwd("/Users/Faderemi/Documents") 
+library(readr) 
+install.packages("psych") 
+library(psych) 
+install.packages("dplyr")
+library(dplyr) 
+install.packages("ISLR2")
+library(ISLR2)
+install.packages("pacman") 
+pacman::p_load(tidyverse,caret,dplyr,ggplot2,psych,rms)
+```
+
+
+read data of the five states into R Markdown
+```{r 101, echo=FALSE}
+healthtech<-read.csv("dataset-four_states- CO - FL - OR - KY - SC - student 26 .csv")
+```
+
+Getting the column names of the data set for analysis purpose
+```{r 102, echo=FALSE}
+names(healthtech)
+```
+
+Analysis of healthtech data using Dim shows that there are 105863 observations and 15 variables in the dataset. The summary function gives a summary of each column in the data set showing the min and max, median, mean, 1st quantile and 3rd quantile
+```{r 104, echo=FALSE}
+dim(healthtech)
+summary(healthtech)
+```
+
+ a further analysis of the data set using describe function to produce summary statistics for each of the variables in the data set giving the mean, standard deviation, minimum, maximum, range, and quantiles. The head and tail gives the top six and last six data in the dataset
+```{r 105, echo=FALSE}
+describe(healthtech)
+head(healthtech)
+tail(healthtech)
+```
+Further analysis of the data set gives the count of each state, showing that Florida state has the highest data set containing about half of the entire data set of 50,819 observations. A plot is also used to further illustrate the observations per state
+```{r 106, echo=FALSE}
+table(healthtech$State)
+
+barplot(table(healthtech$State), main = "State Frequencies", xlab = "State", ylab = "Frequency")
+```
+It was discovered that there are lots of missing values and zeros in the data set. in below function the missing value and zero observations will be removed.final primary specialty, final grad year, rank and accuracy contain missing vcalues and zero values. After removing these the remaining observation is 30732 observations which is about 29% of the initial data set.
+```{r 107, echo=FALSE}
+healthtech_1 <- healthtech[!is.na(healthtech$final_primary_speciality) & healthtech$final_grad_year != 0 & healthtech$Rank != 0 & healthtech$accuracy !=0, ]
+```
+
+While cleaning the data some outliers were also discovered, In final grad year there is a possiblity that the datas were wrongly entered into the dataset and so all final grad year below 1955 will be dropped
+```{r 108, echo=FALSE}
+healthtech_1$final_grad_year[healthtech_1$final_grad_year <1955] <- NA  
+```
+drop na after removing outliers from final grad year. two observations were discovered and dropped from the dataset
+```{r 109, echo=FALSE}
+healthtech_clean <- na.omit(healthtech_1)
+```
+
+The data will be further cleaned by removing all duplicated data
+```{r 110, echo=FALSE}
+healthtech_clean1 <- distinct(healthtech_clean, ID, .keep_all = TRUE)
+```
+
+The first two rows in the data frame are also not relevant to our analysis and can also be dropped.In the given data set, values below 0.3 were dropped from the data set. Low accuracy in analytics or machine learning could be due to low reliability, insufficient data while collating information contained in the data set. Based on this assumption the observations below 0.3 were dropped to run an effective model for optimal result.
+```{r 111, echo=FALSE}
+healthtech_clean1 <- healthtech_clean1[, 3:ncol(healthtech_clean1)]
+
+healthtech_clean1<-healthtech_clean1[healthtech_clean1$accuracy>=0.3,, drop= FALSE]
+```
+
+```{r 112, echo=FALSE}
+barplot(table(healthtech_clean1$State), main = "State Frequencies", xlab = "State", ylab = "Frequency")
+```
+
+```{r 113, echo=FALSE}
+write.csv(healthtech_clean1, "healthfinal.csv", row.names = FALSE) 
+```
+
+
+```{r 114, echo=FALSE}
+healthtech_clean1 %>% ggplot(aes(x=State, y=mean_tech, colour=final_gender))+
+  geom_boxplot()
+```
+A chat comparing the Mean Tech and Gender was plotted to understand if there is a relationship between gender and technical tendency
+
+```{r 115, echo=FALSE}
+healthtech_clean1$State <- as.factor(healthtech_clean1$State)  
+healthtech_clean1$final_primary_speciality <- as.factor(healthtech_clean1$final_primary_speciality)
+healthtech_clean1$final_gender<- as.factor(healthtech_clean1$final_gender)
+healthtech_clean1$final_medical_school <- as.factor(healthtech_clean1$final_medical_school)  
+```
+
+
+#split dataset By state
+```{r 116, echo=FALSE}
+FLstate <- healthtech_clean1 %>% 
+  filter(State == 'FL') %>% group_by(final_primary_speciality) %>% summarise(total_count = n(), .groups = 'drop') %>% 
+  arrange(desc(total_count)) %>% head(6)
+
+FLstate <- healthtech_clean1 %>% 
+  filter(State == 'FL') %>% group_by(final_primary_speciality)
+
+FLstate
+```
+
+
+
+```{r 117, echo=FALSE}
+FLstate1 <- subset(FLstate, final_primary_speciality == "FAMILY MEDICINE" | final_primary_speciality == "INTERNAL MEDICINE" | final_primary_speciality == "CARDIOVASCULAR DISEASE (CARDIOLOGY)" | final_primary_speciality == "OPHTHALMOLOGY" | final_primary_speciality == "DERMATOLOGY" | final_primary_speciality == "OBSTETRICS/GYNECOLOGY")
+
+FLstate
+```
+
+#DataB contains data from remaining four states
+```{r 118, echo=FALSE}
+FourSTData <- healthtech_clean1 %>% 
+  filter(State == 'CO'| State== 'KY' | State== 'OR'| State=='SC')
+```
+
+```{r 119, echo=FALSE}
+summary(FLstate1)
+```
+
+
+
+```{r 120, echo=FALSE}
+summary(FourSTData)
+```
+
+```{r 121, echo=FALSE}
+head(FLstate1)
+tail(FLstate1)
+```
+
+
+
+
+```{r 122, echo=FALSE}
+FLstatetech=rep("0",nrow(FLstate1))
+FLstatetech[FLstate1$median_tech >= 2008]=" 1"
+FLstatetech=as.factor(FLstatetech)
+FLstate1=data.frame(FLstate1 , FLstatetech)
+```
+
+```{r 123, echo=FALSE}
+FLstate1 %>%
+  mutate(rank_groups = cut(Rank, breaks = seq(0, 300, 60), include.lowest = T)) %>% ggplot(aes(rank_groups, fill = FLstatetech))+
+  geom_bar(stat = "count", position = "fill")+
+  scale_y_continuous(labels = scales::percent_format())+
+  labs(title = "Relationship between Rank and Median Tech",
+       y = "Rate",
+       x = "Rank Group", fill = "Outcome")
+```
+A chat comparing the Mean Tech and Rank was plotted to understand if there is a relationship between Rank and technical tendency
+```{r 124, echo=FALSE}
+FLstate1 %>%
+  select(final_grad_year, FLstatetech) %>%
+  ggplot(aes(final_grad_year, fill = FLstatetech))+
+  geom_boxplot()+
+  scale_x_log10()+
+  coord_flip()
+```
+```{r 125, echo=FALSE}
+FLstate1 %>% ggplot(aes(x=State, y=mean_tech, colour=final_gender))+
+  geom_boxplot()
+```
+A chat comparing the Mean Tech and Gender using Data set A with one state was plotted to understand if there is a relationship between Gender and technical tendency
+
+# Split the data set into training and testing sets
+```{r 126, echo=TRUE}
+set.seed(40379140) # set seed for reproducibility
+train_index <- createDataPartition(y = FLstate1$FLstatetech, p = 0.8, list = FALSE)
+train_data <- FLstate1[train_index, ]
+test_data <- FLstate1[-train_index, ]
+```
+
+# Train the model on the training data using Logistic Regression
+```{r 127, echo=TRUE, warning=FALSE}
+controllog <- trainControl(method = 'cv', number = 10)
+model_lr <- train(FLstatetech ~ final_primary_speciality + final_gender + final_grad_year + accuracy,
+                   data = train_data, method = 'glm', trControl = controllog)
+
+summary(model_lr)
+
+model_lr
+
+coef <- summary(model_lr)$coef[, 1]
+
+coef
+# Make predictions on the testing data
+predictions <- predict(model_lr, newdata = test_data)
+
+# Evaluate the performance of the model on the testing data
+confusionMatrix(predictions, test_data$FLstatetech)
+```
+#3.1 Linear Regression Model
+Using the Logistic Regression Model, four predictor variables final primary specialty, final gender, final grad year and accuracy were used. From the final primary specialty 63 categories have missing coefficients and this is due to singularities and are not a part of the top 6 final primary specialties selected. The accuracy and kappa represent the mean values across the 10-fold cross validation used in the model. The report show that final grad year and the following final primary specialties are significant obstetrics/Gynecology, internal medicine, family medicine, dermatology and cardiovascular disease (cardiology) which is indicated by the pvalue which shows the statistical significance of the estimated effect. The dependent variable used is the median tech and it was converted to binary values of 1 and 0. 
+
+The confusion matrix shows the true positive predictions is 330, false negative is 127, false positive of 68 and true negative prediction of 250. The accuracy model of 74.84% shows that the predictions are complete, with 95% confidence interval for the accuracy of the model is between 0.7163 and 0.7786. The concurrence between the predicted and actual value of the coefficient of Kappa is 49.43%. This implies that there is a moderate agreement linking the predicted to the actual value. The sensitivity is 82.91% and specificity is 66.31%. Sensitivity measures the percentage of actual positive cases which are identified as positive while the specificity measures the negative cases. The positive predictive value is 72.21% and the negative predictive value is 78.62%. The overall accuracy and Kappa coefficients generated are 77.55% and 54.68% respectively. The model can be said to perform significantly well. 
+
+# Train the model on the training data using K-Nearest Neighbour
+```{r 128, echo=TRUE}
+controllog <- trainControl(method = 'cv', number = 10)
+model_knn <- train(FLstatetech ~ final_primary_speciality + final_gender + final_grad_year + final_medical_school + accuracy,
+                   data = train_data, method = 'knn', trControl = controllog)
+
+predictions <- predict(model_knn, newdata = test_data)
+
+# Evaluate the performance of the model on the testing data
+confusionMatrix(predictions, test_data$FLstatetech)
+
+summary(model_knn)
+
+model_knn
+# Make predictions on the testing data
+```
+
+
+```{r 129, echo=TRUE}
+print(model_knn)
+plot(model_knn)
+```
+#3.2 K-Nearest Neighbour Model
+Running the second model using the K-Nearest Neighbour Model, this is to enable proper comparison of the three models on Data set A. The trained data set was calculated using cross validation. The trained data set has 3105 observations with five predictors with an objective to predict binary classes with values of 1 and 0.  
+
+In the confusion matrix the rows represent actual classes and columns represent predicted classes. The values along the diagonal from top-left to bottom-right indicate how many correct predictions were made; outside this diagonal are incorrect predictions. The number of true positives was 337, which are the correct predictions while the false negatives are 61, though predicted as negatives but have actual values which are positive. False positive is 129 and false negative is 248 with negative observations 
+
+The overall accuracy of the model is 0.7548, meaning it correctly predicted 75.48% of instances with an accuracy rate of 0.7548. The 95% confidence interval for accuracy is (72.3%, 78.48%). The "No Information Rate" measures the precision that could be achieved by always correctly predicting the most frequent class; in this instance, it's 51.35% which represents its prevalence rate in positive classes. The Kappa statistics measure the agreement between actual and predicted classes, by considering any chance for agreement. A value of 1 indicates perfect agreement. The Kappa value 50.7% shows there is moderate agreement. The Sensitivity (also known as True Positive Rate) is 82.91% which is the percentage of actual positives correctly identified in the model. The sensitivity of 82.91% of positive instances were correctly identified by the system. While the Specificity (also known as True Negative Rate) is 66.31% which is a percentage of actual negatives correctly identified by a model.  
+
+The Positive Predictive Value of 72.32%, commonly referred to as Precision, is the percentage of predicted positives which occur. This means that out of all instances predicted as positive, 72.32 percent were positive with a Negative Predictive Value 51.35% which means that out of all instances predicted as negative, 80.26% were negative. The prevalence of the positive class is 51.35%. The Detection Rate or Recall is the percentage of actual positives correctly identified by a model when taking into account its prevalence. In this instance, it stands at 43.48% meaning that 43.48 percent of all positive instances were correctly identified by this algorithm. The Detection Prevalence is the percentage of instances predicted as positive, taking into account the prevalence of the positive class. It is 60.13%, meaning that 60.13% of all instances were predicted as positive by this model. Balanced Accuracy of 75.23% is the average of Sensitivity and Specificity, which can be useful when classes are imbalanced.  
+
+Finally, the model was trained using a k-Nearest Neighbors algorithm with five predictor variables and tuned by changing k (number of neighbors). Cross validated accuracy and Kappa were calculated for each value of k, then the most accurate model was chosen based on its largest accuracy. The optimal value for k was 9. 
+
+```{r 130, echo=FALSE}
+install.packages("naivebayes")
+library(naivebayes)
+```
+
+# Train the model on the training data using Naive Bayes
+```{r 131, echo=TRUE, warning=FALSE}
+model_NaiveB <- train(FLstatetech ~ final_primary_speciality + final_gender + final_grad_year + 
+                         accuracy + Rank + Global.Rank, data = train_data, method = "naive_bayes",
+                  trControl = trainControl(method = "cv", number = 10),
+                  preProcess = c("center", "scale"))
+
+# Evaluate the model using the test set
+NaiveB_preds <- predict(model_NaiveB, test_data)
+
+confusionMatrix(NaiveB_preds, test_data$FLstatetech)
+
+print(model_NaiveB)
+```
+
+```{r 132, echo=TRUE}
+plot(model_NaiveB)
+```
+#3.3 - Naive Bayes Model
+In the final model performed using the Naïve Bayes model. The confusion matrix and summary of the statistics used based on the given trained data set with 3105 observations, six predictors and two binary classes with values of 1 and 0 were employed to run the model. In addition to this cross validation was also applied in the Naïve Bayes classification model. The number of true positives was 370, which are the correct predictions while the false negatives are 236, though predicted as negatives but have actual values which are positive. False positive is 141 and false negative is 28 with negative observations 
+
+Several performances of the model are derived through the summary statistics but based on results generated from the confusion matrix. The Accuracy is 78.19% this gives a measure of correct predictions form the total predictions. The 95% confidence interval is 0.7512 and 0.8105. The accuracy predicted from the NIR is 51.35%. The measure of agreement by chance between the predicted and actual classes is 56.01% which is a relatively fair agreement. Zeroing in on the sensitivity and specificity which refers to the fraction of true positives from actual positives and the fraction of true negatives from actual negatives are 92.96% and 62.60% respectively. The Positive predictive value is 72.41% which is the fraction of true positives from the total positive predictions while the Negative predictive value is 89.39% giving a measure of true negatives from total negative predictions. The measure of actual positives in dataset A using Naïve Bayes is 51.35%. The detection rate and detection prevalence are 47.74% and 65.94%. The Balance accuracy is 0.7778 which is the average of the specificity and sensitivity. 
+
+The summary statistics Naïve Bayes model looks slightly better when comparing the P-value of <2.2e-16 and the no information rate. The model achieved an accuracy of 77.55% and a kappa coefficient of 54.68%. 
+
+It is also important to state that the importance of calculated accuracy in the models that have been run because this helps to form an opinion about the model performance and the algorithms 
+
+
+```{r 133, echo=FALSE}
+summary(FourSTData)
+```
+
+```{r 134, echo=FALSE}
+FourSTDataB=rep("0",nrow(FourSTData))
+FourSTDataB[FourSTData$max_tech >= 2012]=" 1"
+FourSTDataB=as.factor(FourSTDataB)
+FourSTData=data.frame(FourSTData , FourSTDataB)
+```
+
+# Split the data set into training and testing sets for Data set B using the remaining four states
+```{r 135, echo=TRUE}
+train_index <- createDataPartition(y = FourSTData$FourSTDataB, p = 0.75, list = FALSE)
+train_data <- FourSTData[train_index, ]
+test_data <- FourSTData[-train_index, ]
+```
+
+# Train the model on the training data using K-Nearest Neighbour on Data set B
+```{r 136, echo=TRUE}
+controllog <- trainControl(method = 'cv', number = 10)
+model_knnB <- train(FourSTDataB ~ final_primary_speciality + final_gender + final_grad_year + final_medical_school + accuracy,
+                   data = train_data, method = 'knn', trControl = controllog)
+
+predictions <- predict(model_knnB, newdata = test_data)
+
+# Evaluate the performance of the model on the testing data
+confusionMatrix(predictions, test_data$FourSTDataB)
+
+summary(model_knnB)
+
+model_knnB
+# Make predictions on the testing data
+```
+
+```{r 137, echo=TRUE}
+print(model_knnB)
+plot(model_knnB)
+```
+
+#4.0 Data set B using K-Nearest Neighbour Model
+The second data set with four states was analyzed using the K-Nearest Neighbour Model. The trained data set was calculated using cross validation. The trained data set has 6884 observations with five predictors with an aim to predict binary classes with values of 1 and 0. The number of true positives was 1389, which are the correct predictions while the false negatives are 141, though predicted as negatives but have actual values which are positive. False positive is 351 and false negative is 412 with negative observations 
+
+Several performances of the model are derived through the summary statistics but based on results generated from the confusion matrix. The Accuracy is 78.54% this gives a measure of correct predictions form the total predictions. The 95% confidence interval is 0.7681 and 0.8021. The accuracy predicted from the NIR is 66.72%. The measure of agreement by chance between the predicted and actual classes is 0.481, which is a relatively fair agreement. Zeroing on the sensitivity and specificity which refers to the fraction of true positives from actual positives and the fraction of true negatives from actual negatives are 90.78% and 54% respectively. The Positive predictive value is 79.83% which is the fraction of true positives from the total positive predictions while the Negative predictive value is 74.50% giving a measure of true negatives from total negative predictions. The measure of actual positives in dataset B is 66.72%. The detection rate and detection prevalence are 60.58% and 75.88%. The Balance accuracy is 0.7239 which is the average of the specificity and sensitivity. 
+
+The final value selected for this model was 5, this is the model with the model with the highest accuracy. From the results of the cross validation, the model can be said to have performed well with accuracy ranging around 0.78 and different values of k with the accuracy also performing better than the NIR 
+
+
+#5.0Conclusion and Recommendations
+In concluding the analysis of the given data set using various models such as KNN. Logistic regression and Naive Bayes, the logistic regression performs much better than the other models. It specifically addresses the significance of the response variables such as final primary specialty, and final grad year against the target variable median tech used. We can further conclude that the employees with final primary specialties such as Family medicine, Internal medicine, Dermatology, Cardiovascular disease (Cardiology) and Obstetrics/Gynecology have more technical tendency than other workers with other primary specialties not listed above.it is also not dependent on the gender because it is not significant.  
+
+# Appendix {-}
+{r 1000, echo=FALSE} 
+
+local({r <- getOption("repos") 
+
+       r["CRAN"] <- "http://cran.r-project.org" 
+
+       options(repos=r)}) 
+
+``` 
+
+{r 100, echo=FALSE} 
+
+setwd("/Users/Faderemi/Documents")  
+
+library(readr)  
+
+install.packages("psych")  
+
+library(psych)  
+
+install.packages("dplyr") 
+
+library(dplyr)  
+
+install.packages("ISLR2") 
+
+library(ISLR2) 
+
+install.packages("pacman")  
+
+pacman::p_load(tidyverse,caret,dplyr,ggplot2,psych,rms) 
+
+``` 
+
+{r 101, echo=FALSE} 
+
+healthtech<-read.csv("dataset-four_states- CO - FL - OR - KY - SC - student 26 .csv") 
+
+``` 
+{r 102, echo=FALSE} 
+
+names(healthtech) 
+
+``` 
+
+{r 104, echo=FALSE} 
+
+dim(healthtech) 
+
+summary(healthtech) 
+
+``` 
+{r 105, echo=FALSE} 
+
+describe(healthtech) 
+
+head(healthtech) 
+
+tail(healthtech) 
+
+``` 
+{r 106, echo=FALSE} 
+
+table(healthtech$State) 
+
+barplot(table(healthtech$State), main = "State Frequencies", xlab = "State", ylab = "Frequency") 
+
+``` 
+
+{r 107, echo=FALSE} 
+
+healthtech_1 <- healthtech[!is.na(healthtech$final_primary_speciality) & healthtech$final_grad_year != 0 & healthtech$Rank != 0 & healthtech$accuracy !=0, ] 
+
+``` 
+
+{r 108, echo=FALSE} 
+
+healthtech_1$final_grad_year[healthtech_1$final_grad_year <1955] <- NA   
+
+``` 
+
+{r 109, echo=FALSE} 
+
+healthtech_clean <- na.omit(healthtech_1) 
+
+``` 
+
+{r 110, echo=FALSE} 
+
+healthtech_clean1 <- distinct(healthtech_clean, ID, .keep_all = TRUE) 
+
+``` 
+
+{r 111, echo=FALSE} 
+
+healthtech_clean1 <- healthtech_clean1[, 3:ncol(healthtech_clean1)] 
+
+
+healthtech_clean1<-healthtech_clean1[healthtech_clean1$accuracy>=0.3,, drop= FALSE] 
+
+``` 
+
+  
+{r 112, echo=FALSE} 
+
+barplot(table(healthtech_clean1$State), main = "State Frequencies", xlab = "State", ylab = "Frequency") 
+
+``` 
+
+{r 113, echo=FALSE} 
+
+write.csv(healthtech_clean1, "healthfinal.csv", row.names = FALSE)  
+
+``` 
+
+{r 114, echo=FALSE} 
+
+healthtech_clean1 %>% ggplot(aes(x=State, y=mean_tech, colour=final_gender))+ 
+
+  geom_boxplot() 
+
+``` 
+
+{r 115, echo=FALSE} 
+
+healthtech_clean1$State <- as.factor(healthtech_clean1$State)   
+
+healthtech_clean1$final_primary_speciality <- as.factor(healthtech_clean1$final_primary_speciality) 
+
+healthtech_clean1$final_gender<- as.factor(healthtech_clean1$final_gender) 
+
+healthtech_clean1$final_medical_school <- as.factor(healthtech_clean1$final_medical_school)   
+
+``` 
+#split dataset By state 
+
+{r 116, echo=FALSE} 
+
+FLstate <- healthtech_clean1 %>%  
+
+  filter(State == 'FL') %>% group_by(final_primary_speciality) %>% summarise(total_count = n(), .groups = 'drop') %>%  
+
+  arrange(desc(total_count)) %>% head(6) 
+
+
+FLstate <- healthtech_clean1 %>%  
+
+  filter(State == 'FL') %>% group_by(final_primary_speciality) 
+
+  
+FLstate 
+
+```  
+
+{r 117, echo=FALSE} 
+
+FLstate1 <- subset(FLstate, final_primary_speciality == "FAMILY MEDICINE" | final_primary_speciality == "INTERNAL MEDICINE" | final_primary_speciality == "CARDIOVASCULAR DISEASE (CARDIOLOGY)" | final_primary_speciality == "OPHTHALMOLOGY" | final_primary_speciality == "DERMATOLOGY" | final_primary_speciality == "OBSTETRICS/GYNECOLOGY") 
+
+  
+
+FLstate 
+
+``` 
+
+#DataB contains data from remaining four states 
+
+{r 118, echo=FALSE} 
+
+FourSTData <- healthtech_clean1 %>%  
+
+  filter(State == 'CO'| State== 'KY' | State== 'OR'| State=='SC') 
+
+``` 
+
+{r 119, echo=FALSE} 
+
+summary(FLstate1) 
+
+``` 
+
+{r 120, echo=FALSE} 
+
+summary(FourSTData) 
+
+``` 
+
+{r 121, echo=FALSE} 
+
+head(FLstate1) 
+
+tail(FLstate1) 
+
+``` 
+
+{r 122, echo=FALSE} 
+
+FLstatetech=rep("0",nrow(FLstate1)) 
+
+FLstatetech[FLstate1$median_tech >= 2008]=" 1" 
+
+FLstatetech=as.factor(FLstatetech) 
+
+FLstate1=data.frame(FLstate1 , FLstatetech) 
+
+``` 
+
+{r 123, echo=FALSE} 
+
+FLstate1 %>% 
+
+  mutate(rank_groups = cut(Rank, breaks = seq(0, 300, 60), include.lowest = T)) %>% ggplot(aes(rank_groups, fill = FLstatetech))+ 
+
+  geom_bar(stat = "count", position = "fill")+ 
+
+  scale_y_continuous(labels = scales::percent_format())+ 
+
+  labs(title = "Relationship between Rank and Median Tech", 
+
+       y = "Rate", 
+
+       x = "Rank Group", fill = "Outcome") 
+
+``` 
+
+{r 124, echo=FALSE} 
+
+FLstate1 %>% 
+
+  select(final_grad_year, FLstatetech) %>% 
+
+  ggplot(aes(final_grad_year, fill = FLstatetech))+ 
+
+  geom_boxplot()+ 
+
+  scale_x_log10()+ 
+
+  coord_flip() 
+
+``` 
+
+{r 125, echo=FALSE} 
+
+FLstate1 %>% ggplot(aes(x=State, y=mean_tech, colour=final_gender))+ 
+
+  geom_boxplot() 
+
+``` 
+
+# Split the data set into training and testing sets 
+
+{r 126, echo=TRUE} 
+
+set.seed(40379140) # set seed for reproducibility 
+
+train_index <- createDataPartition(y = FLstate1$FLstatetech, p = 0.8, list = FALSE) 
+
+train_data <- FLstate1[train_index, ] 
+
+test_data <- FLstate1[-train_index, ] 
+
+``` 
+
+{r 129, echo=TRUE} 
+
+print(model_knn) 
+
+plot(model_knn) 
+
+``` 
+
+{r 130, echo=FALSE} 
+
+install.packages("naivebayes") 
+
+library(naivebayes) 
+
+``` 
+
+{r 133, echo=FALSE} 
+
+summary(FourSTData) 
+
+``` 
+
+{r 134, echo=FALSE} 
+
+FourSTDataB=rep("0",nrow(FourSTData)) 
+
+FourSTDataB[FourSTData$max_tech >= 2012]=" 1" 
+
+FourSTDataB=as.factor(FourSTDataB) 
+
+FourSTData=data.frame(FourSTData , FourSTDataB) 
+
+``` 
+
+# Split the data set into training and testing sets for Data set B using the remaining four states 
+
+{r 135, echo=TRUE} 
+
+train_index <- createDataPartition(y = FourSTData$FourSTDataB, p = 0.75, list = FALSE) 
+
+train_data <- FourSTData[train_index, ] 
+
+test_data <- FourSTData[-train_index, ] 
+
+ 
+
